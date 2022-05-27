@@ -1,0 +1,10 @@
+rows	10
+cols	10
+B2	=10 * 2
+C2	=b2 - 5
+C3	=c2 / 3
+A1	=log(c2)
+A2	test string
+d2	=abs(b2 - 10 * c2)
+d3	=(((2-10)*3)-10) + 5
+e4	=log(abs(log(abs(-0.5))))

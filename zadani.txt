@@ -1,0 +1,74 @@
+= Spreadsheet
+
+Autor: Barbora Kolomazníková
+
+== Zadání
+
+Vytvořte aplikaci implementující jednoduchý tabulkový editor.
+
+Buňky pro váš spreadsheet musí podporovat:
+
+. literály (čísla, řetězce, ...)
+. základní operátory: +, -, *, /
+. alespoň 4 jednoduché funkce: sin, abs, concat, ...
+. odkaz na jinou buňku: = A2 + abs(B1)
+. Buňky musí upravovat svůj obsah na základě změn odkazovaných buněk.
+
+Buňka musí detekovat cykly a nesmí dovolit vytvořit výraz, který by cyklus způsobil.
+
+Vytvořená tabulka musí jít uložit do souboru a opětovně zase načíst. Navrhněte vhodnou reprezentaci.
+
+Buňky dále musí implementovat alespoň 1 z těchto funkcionalit:
+
+. zpracovávat výrazy se závorkami
+. agregační funkce přes sloupce, řádky a oblasti: avg(A2:A8), max(B1:C10)
+. vykreslení grafu přes sloupce, řádky nebo oblasti
+
+Použití polymorfismu (doporučeně):
+
+- typy buněk: číslo, řetězec, výraz, funkce, ...
+- grafické rozhraní: konzole, ncurses, SDL, OpenGL, ...
+- různé druhy grafů
+
+== Specifikace
+
+Aplikace umožňuje vytvoření jednoduchého spreadsheetu, který je zobrazen i ovládán z konzole. Podporovány jsou dva módy ovládání - příkazový a interaktivní. V příkazovém módu uživatel zadává příkazy s parametry, které provádí příslušné úpravy spreadsheetu. V interaktivním módu se uživatel pohybuje po spreadsheetu pomocí kláves w/a/s/d a na právě vybrané buňce může provádět akce vkládání a mazání hodnot. Do buněk je možné vkládat jak textové řetězce, tak matematické výrazy. Ty musí začínat `=`, aby byl text rozpoznán jako matematický výraz. Výrazy podporují operátory `+`, `-`, `*`, `/` a funkce `abs`, `log`, `sin`, `cos`. Je také možné používat kulaté závorky pro určení priority vyhodnocování výrazu. Dále je možné využívat reference na jiné buňky, například `A1 * 2` vezme hodnotu z buňky v prvním řádku a v prvním sloupci a vynásobí ji dvěma. Pokud se změní hodnota v referenci `A1`, aktualizuje se i hodnota v buňce držící tuto referenci. Reference na textovou buňku se vyhodnotí jako 0. Pokud je při referencování vytvořen cyklus, aplikace na to upozorní a poslední výraz, který by cyklus vytvořil, neuloží. Spreadsheet je možné uložit do souboru a následně ho z něj opětovně načíst. Podporované formáty pro ukládání a načítání jsou TSV a CSV. V obou formátech musí soubor začínat specifikací velikostí spreadsheetu, například:
+
+```
+rows,5
+cols,5
+```
+
+Poté následují hodnoty, kde jako první je zadána souřadnice buňky, poté oddělovač a následně samotná hodnota, například:
+
+```
+a1,=10
+B2,=a1*2
+c3,test
+```
+
+V příkazovém módu spreadsheet podporuje tyto příkazy:
+
+- `SET "<cell>" "<expr>"` nastaví buňce požadovanou hodnotu
+- `DEL "<cell>"` odstraní hodnotu z buňky
+- `SHOW` vypíše seznam buněk a v nich uložených hodnot (matematické výrazy se zobrazí nevyhodnocené)
+- `SHOW "<cell>"` vypíše hodnotu v konkrétní buňce (matematické výrazy se zobrazí nevyhodnocené)
+- `PRINT` vypíše seznam buněk a v nich uložených hodnot (matematické výrazy se zobrazí vyhodnocené)
+- `PRINT "<cell>"` vypíše hodnotu v konkrétní buňce (matematické výrazy se zobrazí vyhodnocené)
+- `SAVE "<fileformat>" "<filename>"` uloží spreadsheet v požadovaném formátu do souboru (podporované formáty jsou TSV a CSV, defaultní je TSV)
+- `LOAD "<fileformat>" "<filename>"` načte spreadsheet ze souboru (podporované formáty jsou TSV a CSV, defaultní je TSV)
+- `HELP` zobrazí nápovědu
+- `EDIT` přepne do interaktivního módu
+- `EXIT` ukončí program
+
+== Polymorfismus
+
+Polymorfismus je v programu použit na několika místech.
+
+Při parsování matematických výrazů ve třídě `MathParser` se zadaný výraz nejdříve tokenizuje, tedy rozdělí se na jednotlivé proměnné a operátory. Jednotlivé "tokeny" reprezentujeme abstraktní třídou `Token`. Ta má dále jako potomky třídy `Operator` a `Variable` reprezentující jednotlivé operátory a proměnné. Z `Operator` pak dědí třídy jednotlivých operátorů a z `Variable` dědí třídy reprezentující funkce a numerické hodnoty. `MathParser` poté při vyhodnocování pracuje s abstraktními třídami `Token` a `Operator`. Díky polymorfismus je usnadněno rozšiřování parseru o další podporované operátory, případně funkce.
+
+Polymorfismus se uplatňuje také při zpracování příkazů. Každý příkaz je reprezentován abstraktní třídou `Command`, která poskytuje metodu `Do()` pro vykonání příkazu. Jedním z potomků této třídy je další abstraktní třída, `FileCommand`, která reprezentuje příkazy pracující se soubory. Z této třídy konkrétně dědí `SaveCommand` a `LoadCommand`, které se starají o ukládání/načítání spreadsheetu ze souboru. Abstraktní třída `FileCommand` v sobě udržuje registr známých typů souborů, který využívají oba její potomci. Všechny příkazy zpracovává třída `Application`, která v sobě udržuje registr (mapu) se všemi dostupnými příkazy, a podle vstupu zavolá ten správný. Díky polymorfismu je tento registr snadno rozšiřitelný o další příkazy, kdy pouze stačí vytvořit nového potomka třídy `Command` a následně ho do registru přidat.
+
+Jak již bylo zmíněno v předchozím odstavci, jednotlivé typy (formáty) souborů jsou reprezentovány abstraktní třídou `File`. Ta poskytuje rozhraní pro zápis a čtení ze souborů konkrétního formátu. Její potomek `DelimitedFile` je potom využit k reprezentaci dvou formátů s oddělovačem - TSV a CSV. Pro všechny operace se soubory je TSV defaultní formát.
+
+V neposlední řadě se polymorfismus uplatňuje při reprezentaci jednotlivých buněk tabulky. Buňku popisuje abstraktní třída `Cell`, která poskytuje rozhraní pro interakci s buňkou (jako zisk její hodnoty nebo souřadnic). Z této třídy dědí `StringCell` a `NumberCell`, kde první třída reprezentuje buňky uchovávající textové řetězce a druhá třída pak buňky uchovávající matematické výrazy. Třída `Table` reprezentující vlastní tabulku spreadsheetu pak uchovává všechny buňky jako typ `Cell`. Opět nám zde polymorfismus umožňuje zpracovávat různé typy buněk jednotně a případně usnadňuje rozšiřitelnost o další druhy.

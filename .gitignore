@@ -1,0 +1,13 @@
+cmake-build-debug/
+cmake-*/
+.idea/
+*.out
+*.tgz
+doc/
+spreadsheet
+spreadsheet-test
+kolombar
+test
+test-*
+deps
+build/
